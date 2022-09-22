@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap');
+
+$white: #ffffff;
+$light-blue: #e7f1f3;
+$blue: #a9c0da;
+$dark-blue: #171933;
+
+html{background-color: $white;}
+
+body{
+  display: block;
+  margin: 0;
+
+  h3{
+    margin: 0;
+    font: 800 20px Quicksand, 'sans-serif';
+    color: $dark-blue;
+  }
+  input{
+    font: 800 20px Quicksand, 'sans-serif';
+    width: calc(100% - 20px);
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    outline-style: none;
+    text-align: center;
+    color: $dark-blue;
+
+    transition-property: background-color, width;
+    transition-duration:  0.2s;
+  }
+
+  .button{
+    position: relative;
+    opacity: 1;
+    width: 140px;
+    margin: 0 10px 20px 10px;
+    padding: 12px 17px;
+    border: 3px $light-blue solid;
+    border-radius: 10px;
+    background-color: $white;
+
+    transition-property: width, opacity, border-color, box-shadow, background-color;
+    transition-duration:  0.2s;
+
+    &-deactivated{
+      opacity: 0;
+      width: 0;
+      margin: 0;
+      padding: 0;
+
+      transition-property: width, opacity, margin, padding;
+      transition-duration:  0.2s;
+    }
+    &-trans-right{
+      margin-right: 200px;
+
+      transition: margin-right 0.2s;
+    }
+    &-trans-left{
+      margin-left: 200px;
+
+      transition: margin-left 0.2s;
+    }
+    &-trans{
+      margin-right: 200px;
+
+      transition: margin-right 0.2s;
+    }
+    &-selected{border: 3px $blue solid;}
+    &:hover{
+      background-color: $blue;
+      border-color: $blue;
+      box-shadow: 
+        -3px -3px 10px 0 rgba($blue, .2),
+        3px 3px 10px 0 rgba($blue, .2); 
+
+      transition-property: width, margin, padding, opacity, border-color, box-shadow, background-color;
+      transition-duration: 0.2s;
+
+      input{
+        background-color: $blue;
+        transition: background-color 0.2s;
+      }
+      .removebutton{
+        opacity: 1;
+
+        transition: all 0.2s;
+      }
+    }
+  }
+  .removebutton{ 
+    opacity: 0;
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    top: -10px;
+    right: -10px;
+    padding: 0 5px;
+    border-radius: 100%;
+    border-style: none;
+
+    transition-property: opacity, background-color;
+    transition-duration: 0.2s;
+
+    &:hover{background-color: $dark-blue;}
+  }
+
+  nav{
+    display: flex;
+    padding: 10% 10% 20px 10%;
+    justify-content: center;
+    flex-wrap: wrap;
+    background-color: $white;
+
+    #nav-addbutton{background-color: $light-blue;}
+  }
+  main{
+    margin: 0 10%;
+    width: 80%;
+    padding-top: 20px;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    
+    #main-addbutton{
+      width: 100%;
+      background-color: $white;
+    }
+    .content{
+      opacity: 1;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+
+      transition: opacity 0.2s;
+      
+      &-deactivated{
+        opacity: 0;
+        
+        transition: opacity 0.2s;
+      }
+    }
+
+    .button{
+      background-color: $light-blue;
+      
+      input{
+        background-color: $light-blue;
+        
+        // transition-property: width, background-color;
+        // transition-duration: 0.2s;
+      }
+    }
+  }
+}
