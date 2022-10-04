@@ -125,7 +125,56 @@ const validateLastNoteOrDeleteIt = (oldNote, article = null) => {
     content.removeChild(lastNoteEl)
   }
 }
-const interpolateDiv = (
+const moveBlockWithMouse = (div, e, isItNav) => {
+  const width = 0.1 * window.innerWidth
+  const height = 0.1 * window.innerHeight
+  const navOffHeight = nav.offsetHeight
+  const contOffTop = content.offsetTop
+  const contOffHeight = content.offsetHeight
+  let left, top
+
+  if(
+    e.pageX > width + 85.0 && 
+    e.pageX < (9.0*width) - 85.0
+  )
+    left = e.pageX - 85.0
+  else if(e.pageX <= width + 85.0)
+    left = width
+  else if(e.pageX >= (9.0*width) - 85.0)
+    left = (9.0*width) - 174.0
+
+  if(isItNav){
+    if(
+      e.pageY > height &&
+      e.pageY < navOffHeight
+    ) 
+      top = e.pageY - 37.5
+    else if(e.pageY <= height)
+      top = height - 37.5
+    else if(e.pageY >= navOffHeight)
+      top = navOffHeight - 37.5
+  } else{
+    if(
+      e.pageY > contOffTop &&
+      e.pageY < contOffTop + contOffHeight
+    ) 
+      top = e.pageY - 37.5
+    else if(e.pageY <= contOffTop)
+      top = contOffTop - 37.5
+    else if(e.pageY >= contOffTop + contOffHeight)
+      top = contOffTop + contOffHeight - 37.5
+  }
+
+  div.setAttribute('style', `
+    position: absolute;
+    z-index: 2;
+    left: ${left}px;
+    top: ${top}px;
+  `)
+
+  // divDebugger('red', div.style.left, div.style.top)
+}
+const interpolate = (
   obj, button, finalLeft, finalTop, duration
 ) => {
   let initialLeft = obj.style.left
@@ -192,19 +241,152 @@ const getConditionalEnum = (
     return 3
   else
     return 4
+} 
+const getNewPosition = (obj, div, oldPos, isItNav) => {
+  const objChildren = obj.children
+  const objArray = Array.from(objChildren)
+  const objSize = objArray.length
+
+  let divLeft = div.offsetLeft
+  let divTop = div.offsetTop
+  let divWidth = div.offsetWidth
+  let divHeight = div.offsetHeight  
+  let divVertCenter = divLeft + (divWidth/2)
+  let divHorCenter = divTop + (divHeight/2) 
+  
+  // divDebugger('red',`${divVertCenter}px`,`${divHorCenter}px`)
+
+  let i = 0
+  let newPos = 0
+  
+  const objLeft = i => objArray[i].offsetLeft + (divWidth/2)
+  const objTop = i => objArray[i].offsetTop + (divHeight/2)
+  
+  const lastAlikePos = {
+    pos: 0,
+    dist: Math.sqrt(
+      ((divVertCenter - objLeft(0))**2) + ((divHorCenter - objTop(0))**2)
+    ),
+    isAfter: false
+  }
+
+  while (i < objSize) {
+    const iLeft = objLeft(i)
+    const iTop = objTop(i)
+
+    let dLeft = divVertCenter - iLeft
+    let dTop = divHorCenter - iTop
+    let isAfter = true
+    let distance
+
+    // divDebugger('green', `${iLeft}px`, `${iTop}px`)
+
+    if(dLeft < 0) {
+      isAfter = false
+      dLeft *= -1
+    }
+    if(dTop < 0) dTop *= -1
+
+    distance = Math.sqrt((dLeft**2) + (dTop**2))
+    
+    if(distance < lastAlikePos.dist + 60 && dTop < 50){
+      lastAlikePos.dist = distance
+      lastAlikePos.pos = i 
+      lastAlikePos.isAfter = isAfter
+    }
+
+    i++
+    if(i === oldPos) i++
+  }
+
+  if(lastAlikePos.isAfter)
+    newPos = lastAlikePos.pos + 1
+  else {
+    if(oldPos < lastAlikePos.pos)
+      newPos = lastAlikePos.pos - 1
+    else 
+      newPos = lastAlikePos.pos 
+  }
+
+  if(isItNav && newPos <= 0) newPos = 1
+  else if(newPos >= objSize) newPos = objSize - 1
+
+  return newPos
 }
-const jumpToNextPosition = (button, div, newPos) => {
-  const navArray = Array.from(nav.children)
-  const height = nav.offsetHeight - (.1 * window.innerHeight)
-  const width = nav.offsetWidth - (.2 * window.innerWidth)
+const RerenderDOMWithNewPosition = (obj, div, newPos, oldPos, isItNav) => {
+  const objChildren = obj.children
+  const objArray = Array.from(objChildren)
+  const objSize = objArray.length
+  const i = navIndex(state.currentFolder) - 1
+
+  let l = isItNav?1:0
+  
+  if(newPos !== oldPos){
+    let objList = []
+    
+    const appendDiv = (pos, index = pos) => {
+      objArray[pos].id = `${isItNav?'folderbutton':'article'}-${index}`
+      obj.appendChild(objArray[pos])
+
+      if(isItNav)
+        objList.push(state.folder[pos - 1])
+      else
+        objList.push(state.folder[i].content[pos])
+    }
+
+    if(isItNav){
+      while (obj.children.length > 1)
+        obj.removeChild(obj.children[1])
+    } else{
+      while (obj.children.length > 0)
+        obj.removeChild(obj.children[0])
+    }
+
+    while (l < objSize){
+      if(oldPos > newPos && l === newPos){
+        appendDiv(oldPos, l - 1)
+        appendDiv(l)
+      }
+      else if(oldPos < newPos && l === newPos){
+        appendDiv(l, l - 2)
+        appendDiv(oldPos, l - 1)
+      }
+      else if(l === oldPos) 
+        null
+      else if(
+        oldPos > newPos && (l < newPos || l > oldPos) ||
+        oldPos < newPos && (l < oldPos || l > newPos)
+      ) 
+        appendDiv(l, l - 1)
+      else if(oldPos < newPos && l > oldPos && l < newPos)
+        appendDiv(l, l - 2)
+      else
+        appendDiv(l)
+
+      l++
+    }
+    
+    if(isItNav){
+      state.folder = objList
+      state.currentFolder = div.id
+    } else {
+      state.folder[i].content = objList
+      state.currentNote = div.id
+    }
+  }
+}
+const InterpolateBlockToNewPosition = (obj, button, div, newPos) => {
+  const objArray = Array.from(obj.children)
+  const height = obj.offsetHeight - (.1 * window.innerHeight)
+  const width = obj.offsetWidth - (.2 * window.innerWidth)
 
   const totalColumn = Math.floor(width/200)
-  let totalRow = Math.ceil(navArray.length/totalColumn)
+  let totalRow = Math.ceil(objArray.length/totalColumn)
   
   const anteriorPos = newPos
   const anteriorRow = Math.ceil(anteriorPos/totalColumn)
   let anteriorColumn = anteriorPos%totalColumn
-  let maxColumn = (navArray.length%totalColumn) - 1
+  let maxColumn = (objArray.length%totalColumn) - 1
   
   if(anteriorColumn === 0) anteriorColumn = totalColumn
   if(maxColumn === 0) {
@@ -212,8 +394,8 @@ const jumpToNextPosition = (button, div, newPos) => {
     totalRow -= 1
   }
 
-  const navOffTop = (i) => navArray[i].offsetTop
-  const navOffLeft = (i) => navArray[i].offsetLeft
+  const objOffTop = (i) => objArray[i].offsetTop
+  const objOffLeft = (i) => objArray[i].offsetLeft
 
   const conditionalEnum = getConditionalEnum(
     anteriorRow, totalRow, anteriorColumn, totalColumn, maxColumn
@@ -224,35 +406,35 @@ const jumpToNextPosition = (button, div, newPos) => {
     const left = (width/2) - (div.offsetWidth/2) + (.1 * window.innerWidth)
     const top = height + (.1 * window.innerHeight) - 20
     
-    interpolateDiv(div, button, left, top, 150)
+    interpolate(div, button, left, top, 150)
     
   //After the anterior when the row is complete
   } else if(conditionalEnum === 1) {
-    let leftPos = navArray[newPos - 1].offsetLeft + 200
+    let leftPos = objArray[newPos - 1].offsetLeft + 200
 
     if(button.id === 'nav-addbutton') 
-      leftPos = navArray[newPos - 1].offsetLeft + 160
+      leftPos = objArray[newPos - 1].offsetLeft + 160
 
     button.classList.add('button-trans-right')
 
-    interpolateDiv(div, button, leftPos, navOffTop(newPos - 1), 150)
+    interpolate(div, button, leftPos, objOffTop(newPos - 1), 150)
 
   //Before the posterior when the row is incomplete
   } else if(conditionalEnum === 2){
-    navArray[newPos + 1].classList.add('button-trans-left')
-    button = navArray[newPos + 1]
+    objArray[newPos + 1].classList.add('button-trans-left')
+    button = objArray[newPos + 1]
 
-    interpolateDiv(
-      div, button, navOffLeft(newPos + 1) - 100, navOffTop(newPos + 1), 150
+    interpolate(
+      div, button, objOffLeft(newPos + 1) - 100, objOffTop(newPos + 1), 150
     )
   
   //Before the posterior when the row is complete
   } else if(conditionalEnum === 3) {
-    navArray[newPos + 1].classList.add('button-trans-left')
-    button = navArray[newPos + 1]
+    objArray[newPos + 1].classList.add('button-trans-left')
+    button = objArray[newPos + 1]
 
-    interpolateDiv(
-      div, button, navOffLeft(newPos + 1), navOffTop(newPos + 1), 150
+    interpolate(
+      div, button, objOffLeft(newPos + 1), objOffTop(newPos + 1), 150
     )
 
   //After the anterior when the row is incomplete
@@ -263,7 +445,7 @@ const jumpToNextPosition = (button, div, newPos) => {
 
     button.classList.add('button-trans-right')
 
-    interpolateDiv(
+    interpolate(
       div, button, button.offsetLeft + addPos, button.offsetTop, 150
     )
   }
@@ -278,7 +460,7 @@ const onFolderFunc = () => {
     div, input, delButton, mouseEvent, initialPos
   } = createElements()  
 
-  if (oldDiv) validateLastBlockOrDeleteIt(oldDiv)
+  if(oldDiv) validateLastBlockOrDeleteIt(oldDiv)
 
   state.currentFolder = div.id
   while (content.firstChild) 
@@ -341,161 +523,21 @@ const onFolderFunc = () => {
     }
   })
   html.addEventListener('mousemove', e => {
-    if(mouseEvent){
-      const width = 0.1 * window.innerWidth
-      const height = 0.1 * window.innerHeight
-      const navOffHeight = nav.offsetHeight
-      let left, top
-
-      if(
-        e.pageX > width + 87.0 && 
-        e.pageX < (9.0*width) - 87.0
-      )
-        left = e.pageX - 87.0
-      else if(e.pageX <= width + 87.0)
-        left = width
-      else if(e.pageX >= (9.0*width) - 84.0)
-        left = (9.0*width) - 174.0
-
-      if(
-        e.pageY > height + 69.0 &&
-        e.pageY < height + navOffHeight - 138.5
-      ) 
-        top = e.pageY - 49.5
-      else if(e.pageY <= height + 69.0)
-        top = height + 25.5
-      else if(e.pageY >= height + navOffHeight - 138.5)
-        top = height + navOffHeight - 182.0
-
-      div.setAttribute('style', `
-        position: absolute;
-        z-index: 2;
-        left: ${left}px;
-        top: ${top}px;
-      `)
-
-      // divDebugger('red', div.style.left, div.style.top)
-    }
+    if(mouseEvent) moveBlockWithMouse(div, e, true)
   })
   div.addEventListener('mouseup', e => {
     if(mouseEvent && (initialPos.x !== e.pageX || initialPos.y !== e.pageY)){
-      const navChildren = nav.children
-      const navArray = Array.from(navChildren)
-      const navSize = navArray.length
-    
-      let divLeft = div.offsetLeft
-      let divTop = div.offsetTop
-      let divWidth = div.offsetWidth
-      let divHeight = div.offsetHeight
-      let button
+      const oldPos = navIndex(div.id)
+      let newPos = getNewPosition(nav, div, oldPos, true)
       
-      let divVertCenter = divLeft + (divWidth/2)
-      let divHorCenter = divTop + (divHeight/2) 
-      
-      // divDebugger('red',`${divVertCenter}px`,`${divHorCenter}px`)
-  
-      let i = 0
-      let l = 1
-      let newPos = 0
-      let oldPos = navIndex(div.id)
-      
-      const navLeft = i => navArray[i].offsetLeft + (divWidth/2)
-      const navTop = i => navArray[i].offsetTop + (divHeight/2)
-      
-      const lastAlikePos = {
-        pos: 0,
-        dist: Math.sqrt(
-          ((divVertCenter - navLeft(0))**2) + ((divHorCenter - navTop(0))**2)
-        ),
-        isAfter: false
-      }
-  
-      while (i < navSize) {
-        const iLeft = navLeft(i)
-        const iTop = navTop(i)
-  
-        let dLeft = divVertCenter - iLeft
-        let dTop = divHorCenter - iTop
-        let isAfter = true
-        let distance
-  
-        // divDebugger('green', `${iLeft}px`, `${iTop}px`)
-  
-        if(dLeft < 0) {
-          isAfter = false
-          dLeft *= -1
-        }
-        if(dTop < 0) dTop *= -1
-  
-        distance = Math.sqrt((dLeft**2) + (dTop**2))
-        
-        if(distance < lastAlikePos.dist + 60 && dTop < 50){
-          lastAlikePos.dist = distance
-          lastAlikePos.pos = i 
-          lastAlikePos.isAfter = isAfter
-        }
-  
-        i++
-        if(i === oldPos) i++
-      }
-  
-      if(lastAlikePos.isAfter)
-        newPos = lastAlikePos.pos + 1
-      else {
-        if(oldPos < lastAlikePos.pos)
-          newPos = lastAlikePos.pos - 1
-        else 
-          newPos = lastAlikePos.pos 
-      }
-  
-      if(newPos <= 0) newPos = 1
-      else if(newPos >= navSize) newPos = navSize - 1
-  
-      if(newPos !== oldPos){
-        const appendDiv = (pos, index = pos) => {
-          navArray[pos].id = `folderbutton-${index}`
-          nav.appendChild(navArray[pos])
-          stateFolder.push(state.folder[pos - 1])
-        }
-        let stateFolder = []
-  
-        while (nav.children.length > 1)
-          nav.removeChild(nav.children[1])
-    
-        while (l < navSize){
-          if(oldPos > newPos && l === newPos){
-            appendDiv(oldPos, l - 1)
-            appendDiv(l)
-          }
-          else if(oldPos < newPos && l === newPos){
-            appendDiv(l, l - 2)
-            appendDiv(oldPos, l - 1)
-          }
-          else if(l === oldPos) 
-            null
-          else if(
-            oldPos > newPos && (l < newPos || l > oldPos) ||
-            oldPos < newPos && (l < oldPos || l > newPos)
-          ) 
-            appendDiv(l, l - 1)
-          else if(oldPos < newPos && l > oldPos && l < newPos)
-            appendDiv(l, l - 2)
-          else
-            appendDiv(l)
-    
-          l++
-        }
-  
-        state.folder = stateFolder
-        state.currentFolder = div.id
-      }
+      RerenderDOMWithNewPosition(nav, div, newPos, oldPos, true)
       
       setTimeout(() => {
-        button = document.getElementById(`folderbutton-${newPos - 2}`)
+        let button = document.getElementById(`folderbutton-${newPos - 2}`)
 
         if(button === null) button = navAddbutton
         
-        button = jumpToNextPosition(button, div, newPos)
+        InterpolateBlockToNewPosition(nav, button, div, newPos)
       })
     }
 
@@ -515,7 +557,7 @@ const onFolderFunc = () => {
 const onArticleFunc = ({item, changeState}) => {
   const oldNote = document.getElementById(state.currentNote)
   let { 
-    div, input, delButton, delEvent
+    div, input, delButton, delEvent, mouseEvent, initialPos
   } = createElements(false, item, changeState)
   
   if (oldNote) validateLastNoteOrDeleteIt(oldNote)
@@ -535,8 +577,11 @@ const onArticleFunc = ({item, changeState}) => {
 
     setTimeout(() =>  content.removeChild(div), 200)
   })
-  div.addEventListener('click', () => {
+  div.addEventListener('mousedown', e => {
     if(!delEvent){
+      mouseEvent = true
+      initialPos = {x: e.pageX, y: e.pageY}
+
       let oldNote
       
       if(state.currentNote !== '')
@@ -549,6 +594,25 @@ const onArticleFunc = ({item, changeState}) => {
       if (oldNote && oldNote.id !== div.id)
         validateLastNoteOrDeleteIt(oldNote, div)
     }
+  })
+  html.addEventListener('mousemove', e => {
+    if(mouseEvent) moveBlockWithMouse(div, e, false)
+  })
+  div.addEventListener('mouseup', e => {
+    if(mouseEvent && (initialPos.x !== e.pageX || initialPos.y !== e.pageY)){
+      const oldPos = contentIndex(div.id)
+      let newPos = getNewPosition(content, div, oldPos, false)
+      
+      RerenderDOMWithNewPosition(content, div, newPos, oldPos, false)
+      
+      setTimeout(() => {
+        let button = document.getElementById(`article-${newPos - 2}`)
+        
+        InterpolateBlockToNewPosition(content, button, div, newPos)
+      })
+    }
+
+    mouseEvent = false
   })
   input.addEventListener('keydown', e => {
     const i = navIndex(state.currentFolder) - 1
