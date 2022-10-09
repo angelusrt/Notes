@@ -15,18 +15,15 @@ const state = {
   }]
 }
 
-//Helper Functions 
-const navIndex = prop => {
-  const navArr = Array.from(nav.children)
-  for (let i = 0; i < navArr.length; i++)
-    if (navArr[i].id === prop) return i
+//Helper Functions
+/** Find the index of the element by the 'id' in reference to the 'parent' */
+function findIndex(id, parent){
+  const parentArr = Array.from(parent.children)
+  for (let i = 0; i < parentArr.length; i++)
+    if (parentArr[i].id === id) return i
 }
-const contentIndex = prop => {
-  const contArr = Array.from(content.children)
-  for (let i = 0; i < contArr.length; i++)
-    if (contArr[i].id === prop) return i
-}
-const divDebugger = (color, left, top) => {
+/** A debugger function to help the development of position based functions */
+function debug(color, left, top){
   const newDiv = document.createElement('div')
   newDiv.style.width = '10px'
   newDiv.style.height = '10px'
@@ -46,8 +43,13 @@ const divDebugger = (color, left, top) => {
     }
   }
 }
-const createElements = (isItDiv = true, item = null, changeState = true) => {
-  const div = document.createElement(isItDiv?'div':'article')
+/** 
+ * Returns the elements depending on where it is from, indicated by 'isNav'.
+ * 'value' indicates the input.value value. 
+ * 'isStateChanging' manages animation classes.
+ * */
+function createElements(isNav = true, value = null, isStateChanging = true){
+  const div = document.createElement(isNav?'div':'article')
   const delButton = document.createElement('button')
   const delButtonH3 = document.createElement('h3')
   const delButtonH3Text = document.createTextNode('X')
@@ -58,7 +60,7 @@ const createElements = (isItDiv = true, item = null, changeState = true) => {
   delButton.classList.add('removebutton')
   delButton.appendChild(delButtonH3)
   
-  if(isItDiv){
+  if(isNav){
     div.classList.add(
       'button', 'folderbutton', 'button-selected', 'button-deactivated'
     )
@@ -67,7 +69,7 @@ const createElements = (isItDiv = true, item = null, changeState = true) => {
     `folderbutton-${parseInt(nav.lastElementChild.id.slice(13)) + 1}`:
     'folderbutton-0'
   } else {
-    if (changeState)
+    if (isStateChanging)
       div.classList.add('button', 'button-selected', 'button-deactivated')
     else  
       div.classList.add('button')
@@ -76,7 +78,7 @@ const createElements = (isItDiv = true, item = null, changeState = true) => {
     `article-${Number(content.lastElementChild.id.slice(8)) + 1}`:
     'article-0'
     
-    input.value = item
+    input.value = value
   }
 
   div.appendChild(delButton)
@@ -84,48 +86,13 @@ const createElements = (isItDiv = true, item = null, changeState = true) => {
 
   return {div, input, delButton, delEvent, mouseEvent, initialPos}
 }
-const validateLastBlockOrDeleteIt = (oldDiv, animated = false) => {
-  const lastDiv = Array.from(nav.children)[nav.children.length - 1]
-  
-  oldDiv.classList.remove('button-selected')
 
-  if(
-    lastDiv.className !== 'button' && 
-    Array.from(lastDiv.children)[1].value === ''
-  ){
-    const lastDivEl = document.getElementById(lastDiv.id)
-
-    lastDivEl.classList.add('button-deactivated')
-    
-    state.folder.pop()
-    
-    if(!animated)
-      nav.removeChild(lastDivEl)
-    else
-      setTimeout(() => nav.removeChild(lastDivEl), 200)
-  }
-}
-const validateLastNoteOrDeleteIt = (oldNote, article = null) => {
-  const lastNote = Array.from(content.children)[content.children.length - 1]
-  
-  oldNote.classList.remove('button-selected')
-  
-  if(article){
-    article.classList.add('button-selected')
-    state.currentNote = article.id
-  } else {
-    lastNote.classList.remove('button-selected')
-  }
-  
-  if(Array.from(lastNote.children)[1].value === ''){
-    const i = navIndex(state.currentFolder) - 1
-    const lastNoteEl = document.getElementById(lastNote.id)
-    
-    state.folder[i].content.pop()
-    content.removeChild(lastNoteEl)
-  }
-}
-const moveBlockWithMouse = (div, e, isItNav) => {
+/** 
+ * 'obj' indicates which object will suffer the new styles,
+ * 'pageX' and 'pageY' informs the coordinates,
+ * and 'isNav' if it is in the body or nav
+ * */
+function moveBlockWithMouse(obj, pageX, pageY, isNav){
   const width = 0.1 * window.innerWidth
   const height = 0.1 * window.innerHeight
   const navOffHeight = nav.offsetHeight
@@ -134,152 +101,89 @@ const moveBlockWithMouse = (div, e, isItNav) => {
   let left, top
 
   if(
-    e.pageX > width + 85.0 && 
-    e.pageX < (9.0*width) - 85.0
+    pageX > width + 85.0 && 
+    pageX < (9.0*width) - 85.0
   )
-    left = e.pageX - 85.0
-  else if(e.pageX <= width + 85.0)
+    left = pageX - 85.0
+  else if(pageX <= width + 85.0)
     left = width
-  else if(e.pageX >= (9.0*width) - 85.0)
+  else if(pageX >= (9.0*width) - 85.0)
     left = (9.0*width) - 174.0
 
-  if(isItNav){
+  if(isNav){
     if(
-      e.pageY > height &&
-      e.pageY < navOffHeight
+      pageY > height &&
+      pageY < navOffHeight
     ) 
-      top = e.pageY - 37.5
-    else if(e.pageY <= height)
+      top = pageY - 37.5
+    else if(pageY <= height)
       top = height - 37.5
-    else if(e.pageY >= navOffHeight)
+    else if(pageY >= navOffHeight)
       top = navOffHeight - 37.5
   } else{
     if(
-      e.pageY > contOffTop &&
-      e.pageY < contOffTop + contOffHeight
+      pageY > contOffTop &&
+      pageY < contOffTop + contOffHeight
     ) 
-      top = e.pageY - 37.5
-    else if(e.pageY <= contOffTop)
+      top = pageY - 37.5
+    else if(pageY <= contOffTop)
       top = contOffTop - 37.5
-    else if(e.pageY >= contOffTop + contOffHeight)
+    else if(pageY >= contOffTop + contOffHeight)
       top = contOffTop + contOffHeight - 37.5
   }
 
-  div.setAttribute('style', `
+  obj.setAttribute('style', `
     position: absolute;
     z-index: 2;
     left: ${left}px;
     top: ${top}px;
   `)
 
-  // divDebugger('red', div.style.left, div.style.top)
+  // debug('red', div.style.left, div.style.top)
 }
-const interpolate = (
-  obj, button, finalLeft, finalTop, duration
-) => {
-  let initialLeft = obj.style.left
-  let initialTop = obj.style.top
+/** 
+ * Will get the new position of 'div' in relation of it`s
+ * 'parent' and 'oldPos' meaning "old position" 
+ * */
+function getNewPosition(obj, parent, oldPos){
+  const parentChildren = parent.children
+  const parentArray = Array.from(parentChildren)
+  const parentSize = parentArray.length
+
+  let objLeft = obj.offsetLeft
+  let objTop = obj.offsetTop
+  let objWidth = obj.offsetWidth
+  let objHeight = obj.offsetHeight  
+  let objVertCenter = objLeft + (objWidth/2)
+  let objHorCenter = objTop + (objHeight/2) 
   
-  initialLeft = parseInt(initialLeft.slice(0, initialLeft.indexOf('p')))
-  initialTop = parseInt(initialTop.slice(0, initialTop.indexOf('p')))
-
-  const xDist = finalLeft - initialLeft
-  const yDist = finalTop - initialTop
-
-  let durationParts = duration/10
-  
-  const xParts = xDist/durationParts
-  const yParts = yDist/durationParts
-
-  // divDebugger('red', obj.style.left , obj.style.top)
-  // divDebugger('green',`${finalLeft}px`,`${finalTop}px`)
-
-  const animLoop = () => {
-    let initialLeft = obj.style.left
-    let initialTop = obj.style.top
-
-    initialLeft = parseInt(initialLeft.slice(0, initialLeft.indexOf('p')))
-    initialTop = parseInt(initialTop.slice(0, initialTop.indexOf('p')))
-
-    obj.setAttribute('style', `
-      position: absolute;
-      z-index: 2;
-      left: ${initialLeft + xParts}px;
-      top: ${initialTop + yParts}px;
-    `)
-
-    durationParts -= 1 
-    
-    if (durationParts > 0)
-      requestAnimationFrame(animLoop)
-    else {
-      obj.removeAttribute('style')
-      button.classList.remove('button-trans-right', 'button-trans-left')  
-    }
-  }
-  animLoop()
-}
-const getConditionalEnum = (
-  row, tRow, column, tColumn, maxColumn
-) => {
-  if( row === tRow && column === tColumn && maxColumn === tColumn )
-    return 0
-  else if(
-    ( row < tRow && column < tColumn ) || 
-    ( row === tRow && column < tColumn && maxColumn === tColumn )
-  )
-    return 1
-  else if(
-    ( row === tRow - 1 && column === tColumn && maxColumn < tColumn ) || 
-    ( row === tRow && column === tColumn && maxColumn < tColumn )
-  )
-    return 2
-  else if(
-    ( row <= tRow - 1 && column === tColumn ) || 
-    ( row === tRow && column < tColumn && maxColumn === tColumn )
-  )
-    return 3
-  else
-    return 4
-} 
-const getNewPosition = (obj, div, oldPos, isItNav) => {
-  const objChildren = obj.children
-  const objArray = Array.from(objChildren)
-  const objSize = objArray.length
-
-  let divLeft = div.offsetLeft
-  let divTop = div.offsetTop
-  let divWidth = div.offsetWidth
-  let divHeight = div.offsetHeight  
-  let divVertCenter = divLeft + (divWidth/2)
-  let divHorCenter = divTop + (divHeight/2) 
-  
-  // divDebugger('red',`${divVertCenter}px`,`${divHorCenter}px`)
+  // debug('red',`${objVertCenter}px`,`${objHorCenter}px`)
 
   let i = 0
   let newPos = 0
   
-  const objLeft = i => objArray[i].offsetLeft + (divWidth/2)
-  const objTop = i => objArray[i].offsetTop + (divHeight/2)
+  const parentLeft = i => parentArray[i].offsetLeft + (objWidth/2)
+  const parentTop = i => parentArray[i].offsetTop + (objHeight/2)
   
   const lastAlikePos = {
     pos: 0,
     dist: Math.sqrt(
-      ((divVertCenter - objLeft(0))**2) + ((divHorCenter - objTop(0))**2)
+      ((objVertCenter - parentLeft(0))**2) + 
+      ((objHorCenter - parentTop(0))**2)
     ),
     isAfter: false
   }
 
-  while (i < objSize) {
-    const iLeft = objLeft(i)
-    const iTop = objTop(i)
+  while (i < parentSize) {
+    const iLeft = parentLeft(i)
+    const iTop = parentTop(i)
 
-    let dLeft = divVertCenter - iLeft
-    let dTop = divHorCenter - iTop
+    let dLeft = objVertCenter - iLeft
+    let dTop = objHorCenter - iTop
     let isAfter = true
     let distance
 
-    // divDebugger('green', `${iLeft}px`, `${iTop}px`)
+    // debug('green', `${iLeft}px`, `${iTop}px`)
 
     if(dLeft < 0) {
       isAfter = false
@@ -307,42 +211,47 @@ const getNewPosition = (obj, div, oldPos, isItNav) => {
     else 
       newPos = lastAlikePos.pos 
   }
-
-  if(isItNav && newPos <= 0) newPos = 1
-  else if(newPos >= objSize) newPos = objSize - 1
+  
+  if(parent.tagName === 'NAV' && newPos <= 0) newPos = 1
+  else if(newPos >= parentSize) newPos = parentSize - 1
 
   return newPos
 }
-const RerenderDOMWithNewPosition = (obj, div, newPos, oldPos, isItNav) => {
-  const objChildren = obj.children
-  const objArray = Array.from(objChildren)
-  const objSize = objArray.length
-  const i = navIndex(state.currentFolder) - 1
 
-  let l = isItNav?1:0
+/** 
+ * Will rerender 'obj' in 'parent' with 'newPos' compared with 'oldPos'
+ * */
+function rerenderDOMWithNewPosition(obj, parent, newPos, oldPos){
+  const parentChildren = parent.children
+  const parentArray = Array.from(parentChildren)
+  const parentSize = parentArray.length
+  const isNav = parent.tagName === "NAV"
+  const i = findIndex(state.currentFolder, nav) - 1
+
+  let l = isNav?1:0
   
   if(newPos !== oldPos){
-    let objList = []
+    let parentList = []
     
     const appendDiv = (pos, index = pos) => {
-      objArray[pos].id = `${isItNav?'folderbutton':'article'}-${index}`
-      obj.appendChild(objArray[pos])
+      parentArray[pos].id = `${isNav?'folderbutton':'article'}-${index}`
+      parent.appendChild(parentArray[pos])
 
-      if(isItNav)
-        objList.push(state.folder[pos - 1])
+      if(isNav)
+        parentList.push(state.folder[pos - 1])
       else
-        objList.push(state.folder[i].content[pos])
+        parentList.push(state.folder[i].content[pos])
     }
 
-    if(isItNav){
-      while (obj.children.length > 1)
-        obj.removeChild(obj.children[1])
+    if(isNav){
+      while (parent.children.length > 1)
+        parent.removeChild(parent.children[1])
     } else{
-      while (obj.children.length > 0)
-        obj.removeChild(obj.children[0])
+      while (parent.children.length > 0)
+        parent.removeChild(parent.children[0])
     }
 
-    while (l < objSize){
+    while (l < parentSize){
       if(oldPos > newPos && l === newPos){
         appendDiv(oldPos, l - 1)
         appendDiv(l)
@@ -366,27 +275,100 @@ const RerenderDOMWithNewPosition = (obj, div, newPos, oldPos, isItNav) => {
       l++
     }
     
-    if(isItNav){
-      state.folder = objList
-      state.currentFolder = div.id
+    if(isNav){
+      state.folder = parentList
+      state.currentFolder = obj.id
     } else {
-      state.folder[i].content = objList
-      state.currentNote = div.id
+      state.folder[i].content = parentList
+      state.currentNote = obj.id
     }
   }
 }
-const InterpolateBlockToNewPosition = (obj, button, div, newPos) => {
-  const objArray = Array.from(obj.children)
-  const height = obj.offsetHeight - (.1 * window.innerHeight)
-  const width = obj.offsetWidth - (.2 * window.innerWidth)
+/** 
+ * Will interpolate 'obj' in 'parent' to 'newPos'.
+ * 'nearBlock' is being passed because of animations.
+ * */
+function interpolateBlockToNewPosition(obj, parent, newPos, nearBlock){
+  function interpolate(
+    parent, nearBlock, finalLeft, finalTop, duration
+  ){
+    let initialLeft = parent.style.left
+    let initialTop = parent.style.top
+    
+    initialLeft = parseInt(initialLeft.slice(0, initialLeft.indexOf('p')))
+    initialTop = parseInt(initialTop.slice(0, initialTop.indexOf('p')))
+  
+    const xDist = finalLeft - initialLeft
+    const yDist = finalTop - initialTop
+  
+    let durationParts = duration/10
+    
+    const xParts = xDist/durationParts
+    const yParts = yDist/durationParts
+  
+    // debug('red', parent.style.left , parent.style.top)
+    // debug('green',`${finalLeft}px`,`${finalTop}px`)
+  
+    function animLoop(){
+      let initialLeft = parent.style.left
+      let initialTop = parent.style.top
+  
+      initialLeft = parseInt(initialLeft.slice(0, initialLeft.indexOf('p')))
+      initialTop = parseInt(initialTop.slice(0, initialTop.indexOf('p')))
+  
+      parent.setAttribute('style', `
+        position: absolute;
+        z-index: 2;
+        left: ${initialLeft + xParts}px;
+        top: ${initialTop + yParts}px;
+      `)
+  
+      durationParts -= 1 
+      
+      if (durationParts > 0)
+        requestAnimationFrame(animLoop)
+      else {
+        parent.removeAttribute('style')
+        nearBlock.classList.remove('button-trans-right', 'button-trans-left')  
+      }
+    }
+    animLoop()
+  }
+  function getConditionalEnum(
+    row, tRow, column, tColumn, maxColumn
+  ){
+    if( row === tRow && column === tColumn && maxColumn === tColumn )
+      return 0
+    else if(
+      ( row < tRow && column < tColumn ) || 
+      ( row === tRow && column < tColumn && maxColumn === tColumn )
+    )
+      return 1
+    else if(
+      ( row === tRow - 1 && column === tColumn && maxColumn < tColumn ) || 
+      ( row === tRow && column === tColumn && maxColumn < tColumn )
+    )
+      return 2
+    else if(
+      ( row <= tRow - 1 && column === tColumn ) || 
+      ( row === tRow && column < tColumn && maxColumn === tColumn )
+    )
+      return 3
+    else
+      return 4
+  } 
+
+  const parentArray = Array.from(parent.children)
+  const height = parent.offsetHeight - (.1 * window.innerHeight)
+  const width = parent.offsetWidth - (.2 * window.innerWidth)
 
   const totalColumn = Math.floor(width/200)
-  let totalRow = Math.ceil(objArray.length/totalColumn)
+  let totalRow = Math.ceil(parentArray.length/totalColumn)
   
   const anteriorPos = newPos
   const anteriorRow = Math.ceil(anteriorPos/totalColumn)
   let anteriorColumn = anteriorPos%totalColumn
-  let maxColumn = (objArray.length%totalColumn) - 1
+  let maxColumn = (parentArray.length%totalColumn) - 1
   
   if(anteriorColumn === 0) anteriorColumn = totalColumn
   if(maxColumn === 0) {
@@ -394,8 +376,8 @@ const InterpolateBlockToNewPosition = (obj, button, div, newPos) => {
     totalRow -= 1
   }
 
-  const objOffTop = (i) => objArray[i].offsetTop
-  const objOffLeft = (i) => objArray[i].offsetLeft
+  const parentOffTop = (i) => parentArray[i].offsetTop
+  const parentOffLeft = (i) => parentArray[i].offsetLeft
 
   const conditionalEnum = getConditionalEnum(
     anteriorRow, totalRow, anteriorColumn, totalColumn, maxColumn
@@ -403,64 +385,87 @@ const InterpolateBlockToNewPosition = (obj, button, div, newPos) => {
 
   //Jump line
   if(conditionalEnum === 0){
-    const left = (width/2) - (div.offsetWidth/2) + (.1 * window.innerWidth)
+    const left = (width/2) - (obj.offsetWidth/2) + (.1 * window.innerWidth)
     const top = height + (.1 * window.innerHeight) - 20
     
-    interpolate(div, button, left, top, 150)
+    interpolate(obj, nearBlock, left, top, 150)
     
   //After the anterior when the row is complete
   } else if(conditionalEnum === 1) {
-    let leftPos = objArray[newPos - 1].offsetLeft + 200
+    let leftPos = parentArray[newPos - 1].offsetLeft + 200
 
-    if(button.id === 'nav-addbutton') 
-      leftPos = objArray[newPos - 1].offsetLeft + 160
+    if(nearBlock.id === 'nav-addbutton') 
+      leftPos = parentArray[newPos - 1].offsetLeft + 160
 
-    button.classList.add('button-trans-right')
+    nearBlock.classList.add('button-trans-right')
 
-    interpolate(div, button, leftPos, objOffTop(newPos - 1), 150)
+    interpolate(obj, nearBlock, leftPos, parentOffTop(newPos - 1), 150)
 
   //Before the posterior when the row is incomplete
   } else if(conditionalEnum === 2){
-    objArray[newPos + 1].classList.add('button-trans-left')
-    button = objArray[newPos + 1]
+    parentArray[newPos + 1].classList.add('button-trans-left')
+    nearBlock = parentArray[newPos + 1]
 
     interpolate(
-      div, button, objOffLeft(newPos + 1) - 100, objOffTop(newPos + 1), 150
+      obj, nearBlock, parentOffLeft(newPos + 1) - 100, parentOffTop(newPos + 1), 150
     )
   
   //Before the posterior when the row is complete
   } else if(conditionalEnum === 3) {
-    objArray[newPos + 1].classList.add('button-trans-left')
-    button = objArray[newPos + 1]
+    parentArray[newPos + 1].classList.add('button-trans-left')
+    nearBlock = parentArray[newPos + 1]
 
     interpolate(
-      div, button, objOffLeft(newPos + 1), objOffTop(newPos + 1), 150
+      obj, nearBlock, parentOffLeft(newPos + 1), parentOffTop(newPos + 1), 150
     )
 
   //After the anterior when the row is incomplete
   } else {
     let addPos = 100
 
-    if(button.id === 'nav-addbutton') addPos = 60
+    if(nearBlock.id === 'nav-addbutton') addPos = 60
 
-    button.classList.add('button-trans-right')
+    nearBlock.classList.add('button-trans-right')
 
     interpolate(
-      div, button, button.offsetLeft + addPos, button.offsetTop, 150
+      obj, nearBlock, nearBlock.offsetLeft + addPos, nearBlock.offsetTop, 150
     )
   }
 
-  return button
+  return nearBlock
 }
 
 //'Main' functions
-const onFolderFunc = () => {
+function onFolderFunc(){
   const oldDiv = document.getElementById(state.currentFolder)
   let {
     div, input, delButton, mouseEvent, initialPos
   } = createElements()  
 
-  if(oldDiv) validateLastBlockOrDeleteIt(oldDiv)
+  function validateLastObj(oldDiv, animated = false){
+    const lastDiv = Array.from(nav.children)[nav.children.length - 1]
+    
+    oldDiv.classList.remove('button-selected')
+  
+    if(
+      lastDiv.className === 'button' || 
+      Array.from(lastDiv.children)[1].value != ''
+    )
+      return null
+  
+    const lastDivEl = document.getElementById(lastDiv.id)
+  
+    lastDivEl.classList.add('button-deactivated')
+    
+    state.folder.pop()
+    
+    if(!animated)
+      nav.removeChild(lastDivEl)
+    else
+      setTimeout(() => nav.removeChild(lastDivEl), 200)
+  }
+
+  if(oldDiv) validateLastObj(oldDiv)
 
   state.currentFolder = div.id
   while (content.firstChild) 
@@ -471,7 +476,7 @@ const onFolderFunc = () => {
     let pos = parseInt(div.id.slice(13))
 
     state.folder = state.folder.filter((item, index) => 
-      index !== navIndex(delButton.parentElement.id) - 1
+      index !== findIndex(delButton.parentElement.id, nav) - 1
     )
 
     while (content.firstChild)
@@ -496,48 +501,49 @@ const onFolderFunc = () => {
     mouseEvent = true
     initialPos = {x: e.pageX, y: e.pageY}
   
-    if(state.currentFolder !== div.id){
-      const oldDiv = document.getElementById(state.currentFolder)
+    if(state.currentFolder === div.id) return null
+    
+    const oldDiv = document.getElementById(state.currentFolder)
 
-      while (content.firstChild)
-        content.removeChild(content.firstChild)
+    while (content.firstChild)
+      content.removeChild(content.firstChild)
 
-      content.classList.add('content-deactivated')
+    content.classList.add('content-deactivated')
 
-      setTimeout(() => {
-        for (let i = 0; i < state.folder[navIndex(div.id) - 1].content.length; i++) {
-          onArticleFunc({
-            item: state.folder[navIndex(div.id) - 1].content[i], 
-            changeState: false
-          })
-        }
-        window.scroll({top:0, behavior: "smooth"})//problem
-        content.classList.remove('content-deactivated')
-      }, 200)
+    setTimeout(() => {
+      const contLength = state.folder[findIndex(div.id, nav) - 1].content.length
+      for (let i = 0; i < contLength; i++) {
+        onArticleFunc({
+          item: state.folder[findIndex(div.id, nav) - 1].content[i], 
+          isStateChanging: false
+        })
+      }
+      window.scroll({top:0, behavior: "smooth"})//problem
+      content.classList.remove('content-deactivated')
+    }, 200)
 
-      if (oldDiv) validateLastBlockOrDeleteIt(oldDiv, true)
+    if (oldDiv) validateLastObj(oldDiv, true)
 
-      div.classList.add('button-selected')
-      mainAddbutton.classList.remove('button-deactivated')
-      state.currentFolder = div.id
-    }
+    div.classList.add('button-selected')
+    mainAddbutton.classList.remove('button-deactivated')
+    state.currentFolder = div.id
   })
   html.addEventListener('mousemove', e => {
-    if(mouseEvent) moveBlockWithMouse(div, e, true)
+    if(mouseEvent) moveBlockWithMouse(div, e.pageX, e.pageY, true)
   })
   div.addEventListener('mouseup', e => {
     if(mouseEvent && (initialPos.x !== e.pageX || initialPos.y !== e.pageY)){
-      const oldPos = navIndex(div.id)
-      let newPos = getNewPosition(nav, div, oldPos, true)
+      const oldPos = findIndex(div.id, nav)
+      let newPos = getNewPosition(div, nav, oldPos)
       
-      RerenderDOMWithNewPosition(nav, div, newPos, oldPos, true)
+      rerenderDOMWithNewPosition(div, nav, newPos, oldPos)
       
       setTimeout(() => {
-        let button = document.getElementById(`folderbutton-${newPos - 2}`)
-
-        if(button === null) button = navAddbutton
+        let nearBlock = document.getElementById(`folderbutton-${newPos - 2}`)
+  
+        if(nearBlock === null) nearBlock = navAddbutton
         
-        InterpolateBlockToNewPosition(nav, button, div, newPos)
+        interpolateBlockToNewPosition(div, nav, newPos, nearBlock)
       })
     }
 
@@ -554,21 +560,42 @@ const onFolderFunc = () => {
   mainAddbutton.classList.remove('button-deactivated')
   if(div) div.classList.remove('button-deactivated')
 }
-const onArticleFunc = ({item, changeState}) => {
+function onArticleFunc({item, isStateChanging}){
   const oldNote = document.getElementById(state.currentNote)
   let { 
     div, input, delButton, delEvent, mouseEvent, initialPos
-  } = createElements(false, item, changeState)
+  } = createElements(false, item, isStateChanging)
   
-  if (oldNote) validateLastNoteOrDeleteIt(oldNote)
+  function validateLastObj(oldNote, article = null){
+    const lastNote = Array.from(content.children)[content.children.length - 1]
+    
+    oldNote.classList.remove('button-selected')
+    
+    if(article){
+      article.classList.add('button-selected')
+      state.currentNote = article.id
+    } else {
+      lastNote.classList.remove('button-selected')
+    }
+    
+    if(Array.from(lastNote.children)[1].value === ''){
+      const i = findIndex(state.currentFolder, nav) - 1
+      const lastNoteEl = document.getElementById(lastNote.id)
+      
+      state.folder[i].content.pop()
+      content.removeChild(lastNoteEl)
+    }
+  }
+
+  if (oldNote) validateLastObj(oldNote)
 
   delButton.addEventListener('click', e => {
-    const i = navIndex(state.currentFolder) - 1
+    const i = findIndex(state.currentFolder, nav) - 1
     delEvent = e
     
     state.folder[i] = {
       content: state.folder[i].content.filter((item, index) => 
-        index !== contentIndex(div.id) 
+        index !== findIndex(div.id, content) 
       )
     }
 
@@ -578,45 +605,45 @@ const onArticleFunc = ({item, changeState}) => {
     setTimeout(() =>  content.removeChild(div), 200)
   })
   div.addEventListener('mousedown', e => {
-    if(!delEvent){
-      mouseEvent = true
-      initialPos = {x: e.pageX, y: e.pageY}
+    if(delEvent) return null
 
-      let oldNote
-      
-      if(state.currentNote !== '')
-        oldNote = document.getElementById(state.currentNote)
-      else {
-        div.classList.add('button-selected')
-        state.currentNote = div.id
-      } 
-      
-      if (oldNote && oldNote.id !== div.id)
-        validateLastNoteOrDeleteIt(oldNote, div)
-    }
+    mouseEvent = true
+    initialPos = {x: e.pageX, y: e.pageY}
+
+    let oldNote
+    
+    if(state.currentNote !== '')
+      oldNote = document.getElementById(state.currentNote)
+    else {
+      div.classList.add('button-selected')
+      state.currentNote = div.id
+    } 
+    
+    if (oldNote && oldNote.id !== div.id)
+      validateLastObj(oldNote, div)
   })
   html.addEventListener('mousemove', e => {
-    if(mouseEvent) moveBlockWithMouse(div, e, false)
+    if(mouseEvent) moveBlockWithMouse(div, e.pageX, e.pageY, false)
   })
   div.addEventListener('mouseup', e => {
     if(mouseEvent && (initialPos.x !== e.pageX || initialPos.y !== e.pageY)){
-      const oldPos = contentIndex(div.id)
-      let newPos = getNewPosition(content, div, oldPos, false)
+      const oldPos = findIndex(div.id, content)
+      let newPos = getNewPosition(div, content, oldPos)
       
-      RerenderDOMWithNewPosition(content, div, newPos, oldPos, false)
+      rerenderDOMWithNewPosition(div, content, newPos, oldPos)
       
       setTimeout(() => {
-        let button = document.getElementById(`article-${newPos - 2}`)
+        let nearBlock = document.getElementById(`article-${newPos - 2}`)
         
-        InterpolateBlockToNewPosition(content, button, div, newPos)
+        interpolateBlockToNewPosition(div, content, newPos, nearBlock)
       })
     }
 
     mouseEvent = false
   })
   input.addEventListener('keydown', e => {
-    const i = navIndex(state.currentFolder) - 1
-    const j = contentIndex(div.id)
+    const i = findIndex(state.currentFolder, nav) - 1
+    const j = findIndex(div.id, content)
 
     if(e.key.length === 1)
       state.folder[i].content[j] = input.value + e.key
@@ -627,13 +654,13 @@ const onArticleFunc = ({item, changeState}) => {
   state.currentNote = div.id
   content.appendChild(div)
   
-  if(changeState) {
+  if(isStateChanging) {
     input.focus()
 
-    state.folder[navIndex(state.currentFolder) - 1].content.push(input.value)
+    state.folder[findIndex(state.currentFolder, nav) - 1].content.push(input.value)
     div.classList.remove('button-deactivated')
   }
 }
 
 navAddbutton.addEventListener('click', onFolderFunc)
-mainAddbutton.addEventListener('click', () => onArticleFunc({item: null, changeState: true}))
+mainAddbutton.addEventListener('click', () => onArticleFunc({item: null, isStateChanging: true}))
